@@ -136,7 +136,7 @@ services:
       - ix_volume:/home/salvium/.salvium
     healthcheck:
       # This command checks the miner's API and looks for a valid hashrate
-      test: [test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://salviumd:19089/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://salviumd:19089/ || exit 1"]
       # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
       interval: 30s
       timeout: 5s
