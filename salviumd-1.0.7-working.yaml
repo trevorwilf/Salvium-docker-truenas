@@ -1,0 +1,148 @@
+
+name: salviumd
+networks:
+  salvium_p2pool_net:
+    external: true
+services:
+  perms:
+    command:
+      - sh
+      - '-c'
+      - set -eux; mkdir -p /data; chown -R 1000:1000 /data
+    image: alpine:3.20
+    restart: 'no'
+    user: '0:0'
+    volumes:
+      - ix_volume:/data
+  salviumd:
+    container_name: salviumd
+    build:
+      dockerfile_inline: >
+        FROM ubuntu:22.04
+
+
+        RUN set -eux;             apt-get update;            
+        DEBIAN_FRONTEND=noninteractive apt-get install -y
+        --no-install-recommends               ca-certificates              
+        curl wget unzip;             rm -rf
+        /var/lib/apt/lists/*
+
+
+        # Create non-root user/group (uid/gid 1000)
+
+        RUN set -eux;             groupadd -g 1000 salvium;             useradd
+        -m -u 1000 -g 1000 -s /bin/bash salvium
+
+
+        # Download official binaries and verify sha256 (node-only install)
+
+        RUN set -eux;             curl -L -o /tmp/salvium.zip
+        "https://github.com/salvium/salvium/releases/download/v1.0.7/salvium-v1.0.7-ubuntu22.04-linux-x86_64.zip";            
+        echo "48417220800f174a3613881a56131d25c49d344228fca124c8331e0b58a8ff06 
+        /tmp/salvium.zip" | sha256sum -c -;             mkdir -p
+        /tmp/salvium;             unzip -q /tmp/salvium.zip -d
+        /tmp/salvium;             install -m 0755 "$$(find /tmp/salvium -type f
+        -name 'salviumd' | head -n 1)" /usr/local/bin/salviumd;             rm
+        -rf /tmp/salvium /tmp/salvium.zip
+
+
+        RUN set -eux;             mkdir -p /home/salvium/.salvium;            
+        chown -R 1000:1000 /home/salvium
+
+
+        USER 1000:1000
+
+        WORKDIR /home/salvium
+
+
+        VOLUME ["/home/salvium/.salvium"]
+
+
+        EXPOSE 19080 19081 19083 19089
+
+
+        # --non-interactive as requested (ENTRYPOINT)
+
+        ENTRYPOINT ["/usr/local/bin/salviumd", "--non-interactive"]
+      tags:
+        - salviumd:1.0.7
+    cap_drop:
+      - ALL
+    command:
+      - '--confirm-external-bind'
+      - '--p2p-bind-ip=0.0.0.0'
+      - '--p2p-bind-port=19080'
+      - '--rpc-bind-ip=0.0.0.0'
+      - '--rpc-bind-port=19081'
+      - '--rpc-restricted-bind-ip=0.0.0.0'
+      - '--rpc-restricted-bind-port=19089'
+      - '--p2p-use-ipv6'
+      - '--rpc-use-ipv6'
+      - '--rpc-restricted-bind-ipv6-address=::'
+      - '--zmq-pub=tcp://0.0.0.0:19083'
+      - '--out-peers=32'
+      - '--in-peers=64'
+      - '--enforce-dns-checkpointing'
+      - '--enable-dns-blocklist'
+      - '--no-igd'
+      - '--prune-blockchain'
+      - '--sync-pruned-blocks'
+    cpus: '2.0'
+    depends_on:
+      perms:
+        condition: service_completed_successfully
+    expose:
+      - '19081'
+      - '19083'
+      - '19089'
+    healthcheck:
+      interval: 30s
+      retries: 20
+      start_period: 60s
+      test:
+        - CMD
+        - curl
+        - '-fsS'
+        - http://127.0.0.1:19081/get_info
+      timeout: 5s
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 10m
+    mem_limit: 4192m
+    networks:
+      salvium_p2pool_net:
+        aliases:
+          - salviumd
+    ports:
+      - 19080:19080/tcp
+      - 127.0.0.1:19081:19081/tcp
+      - 19089:19089/tcp
+    read_only: True
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 2m
+    tmpfs:
+      - /tmp
+      - /run
+    ulimits:
+      nofile:
+        hard: 1048576
+        soft: 1048576
+    user: '1000:1000'
+    volumes:
+      - ix_volume:/home/salvium/.salvium
+    healthcheck:
+      # This command checks the miner's API and looks for a valid hashrate
+      test: [test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://salviumd:19089/ || exit 1"]
+      # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 5m  # Give it 15 mins to initialize RandomX dataset before checking
+
+volumes:
+  ix_volume:
+    driver: local

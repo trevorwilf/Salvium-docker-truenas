@@ -1,0 +1,130 @@
+name: salviumd
+
+services:
+  perms:
+    image: alpine:3.20
+    user: "0:0"
+    command: ["sh","-c","set -eux; mkdir -p /data; chown -R 1000:1000 /data"]
+    volumes:
+      - ix_volume:/data
+    restart: "no"
+
+  salviumd:
+    image: salviumd:1.0.6-debian12
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM debian:12-slim
+
+        # Base deps + runtime libs commonly needed by Monero-derived daemons
+        RUN set -eux; \
+            apt-get update; \
+            apt-get install -y --no-install-recommends \
+              adduser \
+              ca-certificates \
+              curl \
+              unzip \
+              findutils \
+              libssl3 \
+              libzmq5 \
+              libpgm-5.3-0 \
+              libunbound8 \
+              libsodium23 \
+              libunwind8 \
+              liblzma5 \
+              libreadline8 \
+              libexpat1 \
+              libboost-chrono1.74.0 \
+              libboost-date-time1.74.0 \
+              libboost-filesystem1.74.0 \
+              libboost-locale1.74.0 \
+              libboost-program-options1.74.0 \
+              libboost-regex1.74.0 \
+              libboost-serialization1.74.0 \
+              libboost-system1.74.0 \
+              libboost-thread1.74.0 \
+            ; \
+            rm -rf /var/lib/apt/lists/*
+
+        # Create user + data dir
+        RUN set -eux; \
+            adduser --disabled-password --gecos "" --uid 1000 salvium; \
+            mkdir -p /home/salvium/.salvium; \
+            chown -R 1000:1000 /home/salvium
+
+        # Download salviumd 1.0.6, verify, install
+        RUN set -eux; \
+            curl -L -o /tmp/salvium.zip "https://github.com/salvium/salvium/releases/download/v1.0.6/salvium-v1.0.6-linux-x86_64.zip"; \
+            echo "2adb6fad18a9875487bb36213021959925ef84a262ec426e2062a31bc31b4c60  /tmp/salvium.zip" | sha256sum -c -; \
+            mkdir -p /tmp/salvium; \
+            unzip -q /tmp/salvium.zip -d /tmp/salvium; \
+            find /tmp/salvium -type f -name 'salviumd' -print -quit | xargs -I{} install -m 0755 "{}" /usr/local/bin/salviumd; \
+            rm -rf /tmp/salvium /tmp/salvium.zip
+
+        # Fail the build loudly if libc / deps are wrong
+        RUN set -eux; \
+            /lib/x86_64-linux-gnu/libc.so.6 | head -n 2; \
+            /usr/local/bin/salviumd --version
+
+        USER 1000:1000
+        WORKDIR /home/salvium
+
+        EXPOSE 19080 19081 19083 19089
+        ENTRYPOINT ["/usr/local/bin/salviumd", "--non-interactive"]
+
+    depends_on:
+      - perms
+
+    user: "1000:1000"
+    restart: unless-stopped
+
+    volumes:
+      - ix_volume:/home/salvium/.salvium
+
+    ports:
+      - "19080:19080/tcp"  # P2P
+      - "19081:19081/tcp"  # RPC
+      - "19083:19083/tcp"  # ZMQ
+      - "19089:19089/tcp"  # Restricted RPC
+
+    # More compatible than cpus/mem_limit in many Compose-on-platform setups
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4192M
+
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+
+    stop_grace_period: 2m
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:19081/get_info"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+    command:
+      - "--confirm-external-bind"
+      - "--p2p-bind-ip=0.0.0.0"
+      - "--p2p-bind-port=19080"
+      - "--rpc-bind-ip=0.0.0.0"
+      - "--rpc-bind-port=19081"
+      - "--rpc-restricted-bind-ip=0.0.0.0"
+      - "--rpc-restricted-bind-port=19089"
+      - "--zmq-pub"
+      - "tcp://0.0.0.0:19083"
+      - "--out-peers=32"
+      - "--in-peers=64"
+      - "--enforce-dns-checkpointing"
+      - "--enable-dns-blocklist"
+      - "--no-igd"
+      - "--prune-blockchain"
+
+volumes:
+  ix_volume:
+    driver: local

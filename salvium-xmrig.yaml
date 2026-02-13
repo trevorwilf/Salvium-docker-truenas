@@ -1,0 +1,99 @@
+
+
+name: salvium-xmrig
+networks:
+  salvium_p2pool_net:
+    external: true
+services:
+  xmrig:
+    # This section builds the image on the fly using the embedded steps below
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM alpine:latest
+        # 1. Install Build Dependencies
+        RUN apk add --no-cache vim git make cmake libstdc++ gcc g++ libuv-dev openssl-dev hwloc-dev linux-headers openssl-libs-static pkgconfig automake libtool autoconf
+        
+        # 2. Clone & Build XMRig
+        WORKDIR /tmp
+        RUN git clone https://github.com/xmrig/xmrig.git
+        RUN mkdir /tmp/xmrig/build
+        WORKDIR /tmp/xmrig/scripts
+        RUN ./build_deps.sh
+        WORKDIR /tmp/xmrig/build
+        RUN cmake .. \
+                -DXMRIG_DEPS=scripts/deps \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DWITH_HTTP=ON \
+                -DWITH_HWLOC=ON \
+                -DBUILD_STATIC=ON \
+                -DWITH_OPENCL=OFF \
+                -DWITH_CUDA=OFF \
+                -DWITH_ADL=OFF \
+                -DWITH_NVML=OFF
+        RUN make -j$(nproc)
+        
+        # 3. Install Runtime & Cleanup
+        RUN cp xmrig /usr/local/bin/xmrig && \
+            rm -rf /tmp/xmrig && \
+            apk del git make cmake gcc g++ linux-headers
+
+        ENTRYPOINT ["xmrig"]
+
+    container_name: salvium-xmrig
+    image: xmrig-local-build
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          #cpus: '6.0'
+          memory: 4192m
+    # --- HARDWARE & KERNEL ACCESS ---
+    # privileged: true is REQUIRED for MSR (Model Specific Registers) access
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - IPC_LOCK
+      - SYS_RAWIO # Added for better MSR access
+    # Map CPU devices so the miner can tweak prefetchers
+    volumes:
+      - /dev/cpu:/dev/cpu:ro
+      - /dev/mem:/dev/mem
+      - /sys/kernel/mm/hugepages:/sys/kernel/mm/hugepages
+      # If you enabled HugePages manually in sysctl, map them here:
+      - /dev/hugepages:/dev/hugepages
+      
+    networks:
+      - salvium_p2pool_net
+    # Unlock memory limits so XMRig can grab Huge Pages
+    ulimits:
+      memlock: -1
+      nproc: 65535
+
+
+    # --- MINER CONFIGURATION ---
+    # Replace YOUR_WALLET with your actual Monero address
+    # this is specific to a 12th Gen Intel(R) Core(TM) i5-12400
+    # Limit to 9 threads for 18MB cache = 2mb per thread
+    # Pins to 0, 2, 4, 6, 8, 10, 1, 3, 5 - prioritize primary cores over e-cores
+    # "--cpu-affinity=0x6D5",  -I removed it because my cpu got too hot
+    # wallet is controlled on the p2pool server
+    command: [
+      "--url=salvium-p2pool:3333",
+      "-u", "truenas",
+      "-p", "truenas",
+      "--donate-level=1",
+      "--randomx-1gb-pages",
+      "--threads=4",
+      "--http-host=0.0.0.0",
+      "--http-port=14141"
+    ]
+
+    healthcheck:
+      # This command checks the miner's API and looks for a valid hashrate
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:14141/2/summary || exit 1"]
+      # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 15m  # Give it 15 mins to initialize RandomX dataset before checking

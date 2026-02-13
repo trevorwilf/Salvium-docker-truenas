@@ -1,0 +1,73 @@
+name: salvium-stats
+networks:
+  salvium_p2pool_net:
+    external: True
+services:
+  stats:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.11-slim
+
+        # 1. Install necessary system tools
+        RUN apt-get update && apt-get install -y \
+            git \
+            vim \
+            curl \
+            procps \
+            wget \
+            && rm -rf /var/lib/apt/lists/*
+
+        # 2. Pull the source code from GitHub
+        ARG CACHEBUST=1
+        RUN git clone https://github.com/trevorwilf/p2pool-salvium.git /tmp/p2pool-repo
+        WORKDIR /tmp/p2pool-repo
+        RUN git fetch --all
+        RUN git checkout updatestatistics
+
+        RUN mkdir /app
+        WORKDIR /app
+        RUN cp -r /tmp/p2pool-repo/docker-compose/statistics/app/* /app/
+        # RUN rm -rf /tmp/p2pool-repoA
+
+        # 4. Install dependencies
+        RUN pip install --no-cache-dir flask humanfriendly prefixed
+
+
+        # Cleanup temporary files
+
+        # RUN rm -rf /tmp/p2pool-repo
+
+    command: >
+      /bin/sh -c "cd /tmp/p2pool-repo; git pull; 
+      cp -r /tmp/p2pool-repo/docker-compose/statistics/app/* /app/;
+      echo 'Starting P2Pool Statistics App...'; python
+      /app/p2pool_statistics.py || echo 'App crashed! Staying alive for
+      troubleshooting...'; tail -f /dev/null "
+
+    #command: >
+    #  /bin/sh -c "tail -f /dev/null "
+
+    container_name: salvium-stats
+    networks:
+      - salvium_p2pool_net
+    ports:
+      - '3000:80'
+    restart: unless-stopped
+    stdin_open: True
+    tty: True
+    volumes:
+      - p2pool_stats:/data:ro
+    healthcheck:
+      # This command checks the miner's API and looks for a valid hashrate
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80 || exit 1"]
+      # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 5m  # Give it 15 mins to initialize RandomX dataset before checking
+
+volumes:
+  p2pool_stats:
+    external: True
+    name: salvium-p2pool_p2pool_stats

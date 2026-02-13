@@ -1,0 +1,169 @@
+name: salvium-p2pool
+networks:
+  salvium_p2pool_net:
+    external: true
+
+services:
+  p2pool:
+    container_name: salvium-p2pool
+    build:
+      dockerfile_inline: >
+        # syntax=docker/dockerfile:1
+
+
+        ############################
+
+        # Builder Stage: Compiles p2pool-salvium
+
+        ############################
+
+        FROM ubuntu:22.04 AS builder
+
+        ARG DEBIAN_FRONTEND=noninteractive
+
+
+        RUN set -eux; \
+            apt-get update; \
+            apt-get install -y --no-install-recommends \
+              build-essential cmake git ca-certificates \
+              libuv1-dev libzmq3-dev libsodium-dev \
+              iputils-ping \
+              libcurl4-openssl-dev libgss-dev pkg-config; \
+            rm -rf /var/lib/apt/lists/*
+
+        WORKDIR /src
+
+        RUN set -eux; \
+            git clone --recursive https://github.com/mxhess/p2pool-salvium.git .; \
+            mkdir build; \
+            cd build; \
+            cmake ..; \
+            make -j"$(nproc)"
+
+        ############################
+
+        # Runtime Stage: Lean execution environment
+
+        ############################
+
+        FROM ubuntu:22.04
+
+        RUN set -eux; \
+            apt-get update; \
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              ca-certificates curl libuv1 libzmq5 libsodium23 \
+              libcurl4 libgssapi-krb5-2; \
+            rm -rf /var/lib/apt/lists/*
+
+        # Copy binary using the confirmed correct name
+
+        COPY --from=builder /src/build/p2pool-salvium /usr/local/bin/p2pool-salvium
+
+
+        RUN set -eux; \
+            groupadd -g 1000 p2pool; \
+            useradd -m -u 1000 -g 1000 -s /bin/bash p2pool; \
+            mkdir -p /home/p2pool/.p2pool; \
+            chown -R 1000:1000 /home/p2pool
+
+        USER 1000:1000
+
+        WORKDIR /home/p2pool/.p2pool
+
+        VOLUME ["/home/p2pool/.p2pool"]
+
+
+        # 3333 is internal stratum, 38888/38889 are P2P
+
+        EXPOSE 3333 38889 38888
+
+
+        ENTRYPOINT ["/usr/local/bin/p2pool-salvium"]
+      tags:
+        - p2pool-salvium:latest
+    cap_add:
+      - IPC_LOCK
+      - SYS_ADMIN
+    command:
+      - '--host'
+      - 'salviumd'
+      - '--rpc-port'
+      - '19089'
+      - '--zmq-port'
+      - '19083'
+      - '--log-file'
+      - /dev/stdout
+      - '--wallet'
+      - >-
+        SC11UfFsBY8SbYwtYBweziLqzU6UkgDwmi2mD5y3e6PNj4o1Y6WfzeV5HwyVfo1NajYbt8LQsZkJ1CmP6KnpwXmR54EGx7ymhJ
+      - '--stratum'
+      - "0.0.0.0:3333"
+      - '--p2p'
+      - "0.0.0.0:38888"
+      - '--data-api'
+      - '/home/p2pool/stats'
+      - '--stratum-api'
+      - '--no-igd'
+    cpus: '2.0'
+    depends_on:
+      perms:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: 10m
+    mem_limit: 4192m
+    networks:
+      salvium_p2pool_net:
+        aliases:
+          - salvium-p2pool
+    ports:
+      - 0.0.0.0:3333:3333/tcp
+      - 0.0.0.0:38888:38888/tcp
+    restart: unless-stopped
+    stop_grace_period: 1m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    user: '1000:1000'
+    volumes:
+      - p2pool_volume:/home/p2pool/.p2pool
+      - /dev/hugepages:/dev/hugepages
+      - p2pool_stats:/home/p2pool/stats
+  perms:
+    command:
+      - sh
+      - '-c'
+      - >-
+        set -eux; 
+        mkdir -p /data; 
+        chown -R 1000:1000 /data;
+        echo "Fixing permissions...";
+        mkdir -p /home/p2pool/.p2pool;
+        mkdir -p /home/p2pool/stats;
+        chown -R 1000:1000 /home/p2pool/.p2pool;
+        chown -R 1000:1000 /home/p2pool/stats;
+        echo "Permissions fixed."
+    image: alpine:3.20
+    restart: 'no'
+    user: '0:0'
+    volumes:
+      - p2pool_volume:/data
+      - p2pool_stats:/home/p2pool/stats
+    healthcheck:
+      # This command checks the miner's API and looks for a valid hashrate
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://salvium-p2pool:3333 || exit 1"]
+      # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 5m  # Give it 15 mins to initialize RandomX dataset before checking
+
+volumes:
+  p2pool_volume:
+    driver: local
+  p2pool_stats:
+    driver: local
+    name: salvium-p2pool_p2pool_stats
