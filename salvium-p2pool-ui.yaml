@@ -61,7 +61,6 @@ services:
     healthcheck:
       # This command checks the miner's API and looks for a valid hashrate
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80 || exit 1"]
-      # test: ["CMD-SHELL", "nc -z localhost 14141 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 10
@@ -71,3 +70,4 @@ volumes:
   p2pool_stats:
     external: True
     name: salvium-p2pool_p2pool_stats
+
