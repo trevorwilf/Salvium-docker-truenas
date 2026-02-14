@@ -175,6 +175,7 @@ Access it at:
 - `http://<truenas-ip>:3000`
 
 Notes:
+- Spent way to much time on this, but the new stats dashboard has a similar theme to https://salvium.io/
 - It mounts the external stats volume read-only:
   - `salvium-p2pool_p2pool_stats` → `/data:ro`
 - On container start it does a `git pull` and recopies the app into `/app` before running.
@@ -289,7 +290,8 @@ Edit `salvium-xmrig.yaml`:
 
 - Salvium: `https://github.com/salvium/salvium`
 - P2Pool Salvium fork used for the miner build: `https://github.com/mxhess/p2pool-salvium`
-- Stats UI source (pulled at build/runtime): `https://github.com/trevorwilf/p2pool-salvium` (branch `updatestatistics`)
+- Stats UI source: `https://github.com/trevorwilf/p2pool-salvium` (branch `updatestatistics`)
 - XMRig: `https://github.com/xmrig/xmrig`
+- Salvium project: `https://salvium.io/`
 
 
