@@ -25,7 +25,7 @@ The project focuses on three primary pillars:
 2. Private DeFi: Unlike most privacy coins that are limited to simple transfers, Salvium aims to build an ecosystem for private smart contracts, allowing for decentralized finance (DeFi) apps where balances and transaction details are shielded.
 3. Yield & Utility: It introduces native staking and yield generation on a privacy-first chain, a feat previously considered difficult due to the mathematical nature of stealth addresses and ring signatures.
 For more information visit: 
-A [https://salvium.io/](https://salvium.io/ "https://salvium.io/")
+[https://salvium.io/](https://salvium.io/ "https://salvium.io/")
 
 ---
 
@@ -304,10 +304,10 @@ Edit `salvium-xmrig.yaml`:
 
 ## Credits / upstream projects
 
-- Salvium: `https://github.com/salvium/salvium`
-- P2Pool Salvium fork used for the miner build: `https://github.com/mxhess/p2pool-salvium`
-- Stats UI source: `https://github.com/trevorwilf/p2pool-salvium` (branch `updatestatistics`)
-- XMRig: `https://github.com/xmrig/xmrig`
-- Salvium project: A [link](https://salvium.io/ "https://salvium.io/")
+- Salvium: [https://github.com/salvium/salvium](https://github.com/salvium/salvium "https://github.com/salvium/salvium")
+- P2Pool Salvium fork used for the miner build: [https://github.com/mxhess/p2pool-salvium](https://github.com/mxhess/p2pool-salvium "https://github.com/mxhess/p2pool-salvium")
+- Stats UI source: [https://github.com/trevorwilf/p2pool-salvium/tree/updatestatistics](https://github.com/trevorwilf/p2pool-salvium/tree/updatestatistics "https://github.com/trevorwilf/p2pool-salvium/tree/updatestatistics") (branch `updatestatistics`)
+- XMRig: [https://github.com/xmrig/xmrig](https://github.com/xmrig/xmrig "https://github.com/xmrig/xmrig")
+- Salvium project: [https://salvium.io/](https://salvium.io/ "https://salvium.io/")
 
 
