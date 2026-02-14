@@ -176,6 +176,7 @@ Access it at:
 
 Notes:
 - Spent way to much time on this, but the new stats dashboard has a similar theme to https://salvium.io/
+- Added metrics not in the original dashboard.
 - It mounts the external stats volume read-only:
   - `salvium-p2pool_p2pool_stats` → `/data:ro`
 - On container start it does a `git pull` and recopies the app into `/app` before running.
