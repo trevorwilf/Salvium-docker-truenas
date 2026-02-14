@@ -25,7 +25,7 @@ The project focuses on three primary pillars:
 2. Private DeFi: Unlike most privacy coins that are limited to simple transfers, Salvium aims to build an ecosystem for private smart contracts, allowing for decentralized finance (DeFi) apps where balances and transaction details are shielded.
 3. Yield & Utility: It introduces native staking and yield generation on a privacy-first chain, a feat previously considered difficult due to the mathematical nature of stealth addresses and ring signatures.
 For more information visit: 
-A [link](https://salvium.io/ "https://salvium.io/")
+A [https://salvium.io/](https://salvium.io/ "https://salvium.io/")
 
 ---
 
