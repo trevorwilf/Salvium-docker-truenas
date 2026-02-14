@@ -14,6 +14,21 @@ This repo contains Docker Compose YAMLs intended for **TrueNAS SCALE** (or any D
 
 ---
 
+## What is Salvium
+
+Salvium ($SAL) is a Layer 1 proof-of-work blockchain that aims to solve the "Privacy Paradox"—the conflict between a user's right to anonymity and the legal requirements for regulatory compliance.
+Launched as a fork of the Monero codebase, it inherits Monero's gold-standard privacy features while adding a programmable compliance layer and DeFi capabilities.
+
+Core Objectives
+The project focuses on three primary pillars:
+1. Compliant Privacy: Salvium is designed to be the first privacy chain compatible with global regulations like the EU's MiCA (Markets in Crypto-Assets). It allows users to maintain default anonymity while providing tools for exchanges to meet "Travel Rule" and auditing requirements.
+2. Private DeFi: Unlike most privacy coins that are limited to simple transfers, Salvium aims to build an ecosystem for private smart contracts, allowing for decentralized finance (DeFi) apps where balances and transaction details are shielded.
+3. Yield & Utility: It introduces native staking and yield generation on a privacy-first chain, a feat previously considered difficult due to the mathematical nature of stealth addresses and ring signatures.
+For more information visit: 
+A [link](https://salvium.io/ "https://salvium.io/")
+
+---
+
 ## Repo contents
 
 - `salviumd-1.0.6-working.yaml`  
@@ -293,6 +308,6 @@ Edit `salvium-xmrig.yaml`:
 - P2Pool Salvium fork used for the miner build: `https://github.com/mxhess/p2pool-salvium`
 - Stats UI source: `https://github.com/trevorwilf/p2pool-salvium` (branch `updatestatistics`)
 - XMRig: `https://github.com/xmrig/xmrig`
-- Salvium project: `https://salvium.io/`
+- Salvium project: A [link](https://salvium.io/ "https://salvium.io/")
 
 
