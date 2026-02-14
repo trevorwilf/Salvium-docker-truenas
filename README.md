@@ -280,7 +280,8 @@ Edit `salvium-xmrig.yaml`:
 
 ## Next steps
 
-The containers need to be hardened.
+- The containers need to be hardened.
+- Add logic to ensure proper startup sequence
 
 ---
 
